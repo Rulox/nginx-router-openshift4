@@ -1,0 +1,96 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  annotations:
+    deployment.kubernetes.io/revision: "2"
+  labels:
+    ingresscontroller.operator.openshift.io/owning-ingresscontroller: nginx
+  name: router-nginx
+  namespace: openshift-ingress
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      ingresscontroller.operator.openshift.io/deployment-ingresscontroller: nginx
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        ingresscontroller.operator.openshift.io/deployment-ingresscontroller: nginx
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: ingresscontroller.operator.openshift.io/deployment-ingresscontroller
+                  operator: In
+                  values:
+                  - nginx
+              topologyKey: kubernetes.io/hostname
+            weight: 100
+      containers:
+      - env:
+        - name: ROUTER_SERVICE_NAMESPACE
+          value: openshift-ingress
+        - name: DEFAULT_CERTIFICATE_DIR
+          value: /etc/pki/tls/private
+        - name: ROUTER_SERVICE_NAME
+          value: nginx
+        - name: ROUTER_CANONICAL_HOSTNAME
+          value: <<YOUR_DOMAIN>> 
+        - name: ROUTER_USE_PROXY_PROTOCOL
+          value: "true"
+        - name: ROUTER_THREADS
+          value: "4"
+        image: docker.io/rulox/nginx-openshift-router4:4.0
+        imagePullPolicy: IfNotPresent
+        name: router
+        ports:
+        - containerPort: 80
+          name: http
+          protocol: TCP
+        - containerPort: 443
+          name: https
+          protocol: TCP
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: FallbackToLogsOnError
+        volumeMounts:
+        - mountPath: /etc/pki/tls/private
+          name: default-certificate
+          readOnly: true
+        - mountPath: /etc/pki/tls/metrics-certs
+          name: metrics-certs
+          readOnly: true
+      dnsPolicy: ClusterFirst
+      nodeSelector:
+        beta.kubernetes.io/os: linux
+        node-role.kubernetes.io/worker: ""
+      priorityClassName: system-cluster-critical
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      serviceAccount: router
+      serviceAccountName: router
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: default-certificate
+        secret:
+          defaultMode: 420
+          secretName: router-certs-default
+      - name: metrics-certs
+        secret:
+          defaultMode: 420
+          secretName: router-metrics-certs-default

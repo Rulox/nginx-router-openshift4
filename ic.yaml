@@ -1,0 +1,14 @@
+apiVersion: operator.openshift.io/v1
+kind: IngressController
+metadata:
+  generation: 1
+  name: nginx
+  namespace: openshift-ingress-operator
+spec: {}
+status:
+  availableReplicas: 1
+  domain: <<YOUR_DOMAIN>>
+  endpointPublishingStrategy:
+    type: LoadBalancerService
+  selector: ingresscontroller.operator.openshift.io/deployment-ingresscontroller=nginx
+

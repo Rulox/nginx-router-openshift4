@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-proxy-protocol: '*'
+  labels:
+    app: router
+    ingresscontroller.operator.openshift.io/owning-ingresscontroller: nginx
+    router: router-nginx
+  name: router-nginx
+  namespace: openshift-ingress
+  ownerReferences:
+  - apiVersion: apps/v1
+    controller: true
+    kind: Deployment
+    name: router-nginx
+    uid: <<DEPLOYMENT_UID>>
+spec:
+  externalTrafficPolicy: Local
+  healthCheckNodePort: 31479
+  ports:
+  - name: http
+    nodePort: 31588
+    port: 80
+    protocol: TCP
+    targetPort: http
+  - name: https
+    nodePort: 32201
+    port: 443
+    protocol: TCP
+    targetPort: https
+  selector:
+    ingresscontroller.operator.openshift.io/deployment-ingresscontroller: nginx
+  sessionAffinity: None
+  type: LoadBalancer
